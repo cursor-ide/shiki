@@ -1,0 +1,150 @@
+name: Publish to JSR and Sync Dependencies
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run every Monday at 09:00 UTC to check for npm package updates
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  check-npm-updates:
+    runs-on: ubuntu-latest
+    outputs:
+      has-updates: ${{ steps.check-updates.outputs.has-updates }}
+      new-version: ${{ steps.check-updates.outputs.new-version }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Check for shiki package updates
+        id: check-updates
+        run: |
+          # Get current version from deno.json
+          current_version=$(grep -o '"shiki@\^[0-9.]*"' deno.json | grep -o '[0-9.]*')
+          echo "Current version: $current_version"
+          
+          # Get latest version from npm
+          latest_version=$(npm view shiki version)
+          echo "Latest version: $latest_version"
+          
+          # Compare versions
+          if [ "$current_version" != "$latest_version" ]; then
+            echo "has-updates=true" >> $GITHUB_OUTPUT
+            echo "new-version=$latest_version" >> $GITHUB_OUTPUT
+            echo "Update available: $current_version → $latest_version"
+          else
+            echo "has-updates=false" >> $GITHUB_OUTPUT
+            echo "No updates available"
+          fi
+
+  update-dependencies:
+    needs: check-npm-updates
+    if: needs.check-npm-updates.outputs.has-updates == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Update package versions
+        env:
+          NEW_VERSION: ${{ needs.check-npm-updates.outputs.new-version }}
+        run: |
+          echo "Updating to version $NEW_VERSION"
+          
+          # Update deno.json imports
+          sed -i "s/\"shiki@\^[0-9.]*\"/\"shiki@^$NEW_VERSION\"/g" deno.json
+          sed -i "s/\"shiki\/[^\"]*\"/\"shiki@^$NEW_VERSION\/core\"/g" deno.json
+          sed -i "s/\"shiki\/wasm@\^[0-9.]*\"/\"shiki\/wasm@^$NEW_VERSION\"/g" deno.json
+          
+          # Update jsr.json version to match
+          sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$NEW_VERSION\"/g" jsr.json
+          
+          # Update version in deno.json too
+          sed -i "s/\"version\": \"[0-9.]*\"/\"version\": \"$NEW_VERSION\"/g" deno.json
+          
+          echo "Updated files:"
+          git diff --name-only || true
+          
+      - name: Run tests
+        run: |
+          deno task -A test
+          
+      - name: Check if tests pass
+        run: |
+          if ! deno task test; then
+            echo "Tests failed after version update"
+            exit 1
+          fi
+          echo "All tests pass with new version"
+          
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update shiki dependencies to v${{ needs.check-npm-updates.outputs.new-version }}"
+          title: "🔄 Auto-update shiki to v${{ needs.check-npm-updates.outputs.new-version }}"
+          body: |
+            ## 🔄 Automated Dependency Update
+            
+            This PR automatically updates the shiki package dependencies to the latest version.
+            
+            ### Changes
+            - Updated shiki from current version to `v${{ needs.check-npm-updates.outputs.new-version }}`
+            - Updated all related shiki package imports in `deno.json`
+            - Updated package version in `jsr.json` to match
+            - All tests are passing ✅
+            
+            ### Verification
+            - ✅ Tests pass with new version
+            - ✅ Dependencies are properly synchronized
+            
+            This update maintains compatibility with the latest shiki features and bug fixes.
+            
+            ---
+            🤖 _This PR was created automatically by GitHub Actions_
+          branch: auto-update-shiki-v${{ needs.check-npm-updates.outputs.new-version }}
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
+            enhancement
+
+  publish:
+    runs-on: ubuntu-latest
+    # Only run publish on push to main (not on scheduled dependency checks)
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+          
+      - name: Run tests before publishing
+        run: deno task -A test
+        
+      - name: Check for lint issues
+        run: deno task lint
+        
+      - name: Publish to JSR
+        run: npx jsr publish
