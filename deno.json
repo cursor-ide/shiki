@@ -1,0 +1,147 @@
+{
+	"$schema": "https://raw.githubusercontent.com/denoland/deno/main/cli/schemas/config-file.v1.json",
+	"compilerOptions": {
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"strict": true
+	},
+	"lib": [
+		"deno.ns",
+		"deno.unstable",
+		"deno.window"
+	],
+	"unstable": [
+		"fs",
+		"net",
+		"raw-imports",
+		"webgpu"
+	],
+	"exports": {
+		".": "./src/mod.ts"
+	},
+	"fmt": {
+		"exclude": [
+			"node_modules/",
+			"dist/",
+			"coverage/",
+			"out/",
+			"wasm/",
+			"examples/",
+			"deno.lock"
+		],
+		"include": [
+			"*.ts",
+			"*.tsx",
+			"*.json",
+			"*.yaml",
+			"*.yml",
+			"src/**/*.ts",
+			"src/**/*.tsx",
+			"tests/**/*.ts",
+			"tests/**/*.tsx",
+			"tests/**/*.json",
+			"tests/**/*.yaml",
+			"tests/**/*.yml",
+			"scripts/**/*.ts",
+			"scripts/**/*.tsx"
+		],
+		"quoteProps": "consistent",
+		"indentWidth": 2,
+		"lineWidth": 100,
+		"proseWrap": "preserve",
+		"semiColons": true,
+		"singleQuote": true,
+		"useTabs": true
+	},
+	"imports": {
+		"@shikijs/core": "npm:@shikijs/core@^3.7.0",
+		"@std/assert": "jsr:@std/assert@^1.0.13",
+		"@shikijs/engine-oniguruma": "npm:@shikijs/engine-oniguruma@^3.7.0",
+		"@shikijs/langs": "npm:@shikijs/langs@^3.7.0",
+		"@shikijs/themes": "npm:@shikijs/themes@^3.7.0",
+		"@shikijs/types": "npm:@shikijs/types@^3.7.0",
+		"@shikijs/vscode-textmate": "npm:@shikijs/vscode-textmate@^10.0.2",
+		"shiki": "npm:shiki@^3.7.0"
+	},
+	"lint": {
+		"rules": {
+			"include": [
+				"ban-untagged-todo",
+				"no-sync-fn-in-async-fn"
+			],
+			"tags": [
+				"recommended"
+			]
+		}
+	},
+	"name": "@shikijs/shiki",
+	"version": "3.7.0",
+	"license": "MIT",
+	"nodeModulesDir": "auto",
+	"lock": false,
+	"publish": {
+		"include": [
+			"LICENSE",
+			"README.md",
+			"src/**/*.ts"
+		]
+	},
+	"tasks": {
+		"bench": {
+			"command": "deno run -A scripts/bench/main.ts",
+			"description": "Run benchmarks"
+		},
+		"check": {
+			"command": "deno check src/mod.ts",
+			"description": "Check TypeScript files for errors"
+		},
+		"coverage": {
+			"command": "deno run -A scripts/coverage/main.ts",
+			"description": "Run coverage reports",
+			"dependencies": [
+				"test"
+			]
+		},
+		"fmt": {
+			"command": "deno fmt",
+			"description": "Format code"
+		},
+		"lint": {
+			"command": "deno lint",
+			"description": "Lint code",
+			"dependencies": [
+				"fmt"
+			]
+		},
+		"prepare-wasm": {
+			"command": "deno run -A scripts/prepare-wasm/main.ts",
+			"description": "Prepare WebAssembly files"
+		},
+		"publish": {
+			"command": "deno run -A scripts/publish/main.ts",
+			"description": "Publish package"
+		},
+		"publish:dry": {
+			"command": "deno run -A scripts/publish/main.ts --dry-run",
+			"description": "Dry run publish"
+		},
+		"test": {
+			"command": "deno run -A tests/*.test.ts",
+			"description": "Run tests",
+			"dependencies": [
+				"check"
+			]
+		}
+	},
+	"test": {
+		"include": [
+			"tests/**.test.ts",
+			"tests/**/*.test.ts",
+			"tests/**.test.tsx",
+			"tests/**/*.test.tsx"
+		]
+	}
+}

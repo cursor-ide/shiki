@@ -1,0 +1,9 @@
+{
+	"$schema": "https://jsr.io/schema/config-file.v1.json",
+	"name": "@shikijs/shiki",
+	"version": "3.7.0",
+	"license": "MIT",
+	"exports": {
+		".": "./src/mod.ts"
+	}
+}
